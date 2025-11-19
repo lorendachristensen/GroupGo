@@ -71,5 +71,13 @@ class TripRepository {
 
         awaitClose { subscription.remove() }
     }
+    suspend fun deleteTrip(tripId: String): Result<Unit> {
+        return try {
+            tripsCollection.document(tripId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 

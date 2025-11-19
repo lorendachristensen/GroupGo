@@ -1,5 +1,7 @@
 package com.lorenda.groupgo.ui.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -15,19 +17,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lorenda.groupgo.data.Trip
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.width
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     userEmail: String,
     trips: List<Trip> = emptyList(),
     onCreateTripClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {}
+    onLogoutClick: () -> Unit = {},
+    onDeleteTrip: (String) -> Unit = {}
 ) {
+    var tripToDelete by remember { mutableStateOf<Trip?>(null) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -150,8 +151,14 @@ fun HomeScreen(
                     items(trips.size) { index ->
                         val trip = trips[index]
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { /* Navigate to trip details later */ }
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = { /* Navigate to trip details later */ },
+                                    onLongClick = {
+                                        tripToDelete = trip
+                                    }
+                                )
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp)
@@ -183,7 +190,43 @@ fun HomeScreen(
                     }
                 }
             }
+
+            // Delete confirmation dialog
+            tripToDelete?.let { trip ->
+                AlertDialog(
+                    onDismissRequest = { tripToDelete = null },
+                    title = { Text("Delete Trip?") },
+                    text = { Text("Are you sure you want to delete '${trip.name}'? This cannot be undone.") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                onDeleteTrip(trip.id)
+                                tripToDelete = null
+                            }
+                        ) {
+                            Text("Delete", color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { tripToDelete = null }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun HomeScreenPreview() {
+    MaterialTheme {
+        HomeScreen(
+            userEmail = "test@example.com",
+            onCreateTripClick = {},
+            onLogoutClick = {}
+        )
     }
 }
 
