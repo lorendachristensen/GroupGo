@@ -7,10 +7,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.lorenda.groupgo.ui.auth.LoginScreen
 import com.lorenda.groupgo.ui.theme.GroupGoTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,28 +18,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             GroupGoTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+                    LoginScreen(
+                        modifier = Modifier.padding(innerPadding),
+                        onLoginClick = { email, password ->
+                            // We'll add Firebase login here soon
+                            println("Login attempted with: $email")
+                        },
+                        onSignUpClick = {
+                            // We'll add navigation to signup here soon
+                            println("Navigate to sign up")
+                        }
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    GroupGoTheme {
-        Greeting("Android")
     }
 }
