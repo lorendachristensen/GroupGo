@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.lorenda.groupgo.ui.auth.LoginScreen
 import com.lorenda.groupgo.ui.auth.SignUpScreen
 import com.lorenda.groupgo.ui.theme.GroupGoTheme
+import com.lorenda.groupgo.ui.home.HomeScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,30 +70,16 @@ fun GroupGoApp() {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         when {
             isLoggedIn -> {
-                // Main app content when logged in - ADD LOGOUT BUTTON
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        "Welcome to GroupGo!",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("You're logged in!")
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = {
-                            authViewModel.signOut()
-                            Toast.makeText(context, "Logged out", Toast.LENGTH_SHORT).show()
-                        }
-                    ) {
-                        Text("Log Out")
+                HomeScreen(
+                    userEmail = authViewModel.auth.currentUser?.email ?: "User",
+                    onCreateTripClick = {
+                        Toast.makeText(context, "Create trip coming soon!", Toast.LENGTH_SHORT).show()
+                    },
+                    onLogoutClick = {
+                        authViewModel.signOut()
+                        Toast.makeText(context, "Logged out", Toast.LENGTH_SHORT).show()
                     }
-                }
+                )
             }
             showSignUp -> {
                 // Show sign up screen
