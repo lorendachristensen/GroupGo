@@ -13,14 +13,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun LoginScreen(
+fun SignUpScreen(
     modifier: Modifier = Modifier,
-    onLoginClick: (String, String) -> Unit = { _, _ -> },
-    onSignUpClick: () -> Unit = {},
+    onSignUpClick: (String, String) -> Unit = { _, _ -> },
+    onLoginClick: () -> Unit = {},
     isLoading: Boolean = false
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -31,7 +32,7 @@ fun LoginScreen(
     ) {
         // App Title
         Text(
-            text = "GroupGo",
+            text = "Join GroupGo",
             fontSize = 32.sp,
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.primary
@@ -40,7 +41,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Plan trips together",
+            text = "Create your account",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -73,16 +74,46 @@ fun LoginScreen(
             ),
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            enabled = !isLoading
+            enabled = !isLoading,
+            supportingText = { Text("At least 6 characters") }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Confirm Password Field
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = { confirmPassword = it },
+            label = { Text("Confirm Password") },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading,
+            isError = confirmPassword.isNotEmpty() && password != confirmPassword,
+            supportingText = {
+                if (confirmPassword.isNotEmpty() && password != confirmPassword) {
+                    Text("Passwords don't match", color = MaterialTheme.colorScheme.error)
+                }
+            }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Login Button
+        // Sign Up Button
         Button(
-            onClick = { onLoginClick(email, password) },
+            onClick = {
+                if (password == confirmPassword) {
+                    onSignUpClick(email, password)
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
-            enabled = email.isNotBlank() && password.isNotBlank() && !isLoading
+            enabled = email.isNotBlank() &&
+                    password.length >= 6 &&
+                    password == confirmPassword &&
+                    !isLoading
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
@@ -90,23 +121,23 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Text("Log In", modifier = Modifier.padding(vertical = 8.dp))
+                Text("Sign Up", modifier = Modifier.padding(vertical = 8.dp))
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Sign Up Link
+        // Login Link
         Row {
             Text(
-                text = "Don't have an account? ",
+                text = "Already have an account? ",
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             TextButton(
-                onClick = onSignUpClick,
+                onClick = onLoginClick,
                 enabled = !isLoading
             ) {
-                Text("Sign Up")
+                Text("Log In")
             }
         }
     }
@@ -114,9 +145,9 @@ fun LoginScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun LoginScreenPreview() {
+fun SignUpScreenPreview() {
     MaterialTheme {
-        LoginScreen()
+        SignUpScreen()
     }
 }
 
