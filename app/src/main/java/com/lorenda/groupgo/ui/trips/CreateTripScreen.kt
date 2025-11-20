@@ -253,4 +253,3 @@ fun CreateTripScreenPreview() {
         CreateTripScreen()
     }
 }
-

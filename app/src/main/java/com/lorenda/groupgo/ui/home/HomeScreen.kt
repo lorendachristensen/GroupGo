@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,8 +25,9 @@ fun HomeScreen(
     userEmail: String,
     trips: List<Trip> = emptyList(),
     onCreateTripClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {},  // NEW PARAMETER ADDED
     onLogoutClick: () -> Unit = {},
-    onDeleteTrip: (String) -> Unit = {}
+    onDeleteTrip: (String) -> Unit = {}  // ADDED TO MATCH YOUR EXISTING IMPLEMENTATION
 ) {
     var tripToDelete by remember { mutableStateOf<Trip?>(null) }
 
@@ -38,6 +40,14 @@ fun HomeScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
+                    // NEW PROFILE BUTTON ADDED
+                    IconButton(onClick = onProfileClick) {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "Profile",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                     IconButton(onClick = onLogoutClick) {
                         Icon(
                             Icons.Default.ExitToApp,
@@ -225,10 +235,8 @@ fun HomeScreenPreview() {
         HomeScreen(
             userEmail = "test@example.com",
             onCreateTripClick = {},
+            onProfileClick = {},
             onLogoutClick = {}
         )
     }
 }
-
-
-

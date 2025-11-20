@@ -21,7 +21,8 @@ class TripRepository {
         startDate: String,
         endDate: String,
         budget: String,
-        numberOfPeople: String
+        numberOfPeople: String,
+
     ): Result<String> {
         return try {
             val userId = auth.currentUser?.uid ?: throw Exception("User not logged in")
@@ -74,6 +75,30 @@ class TripRepository {
     suspend fun deleteTrip(tripId: String): Result<Unit> {
         return try {
             tripsCollection.document(tripId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    suspend fun updateTrip(
+        tripId: String,
+        name: String,
+        destination: String,
+        budget: String,
+        numberOfPeople: String,
+        startDate: String,
+        endDate: String
+    ): Result<Unit> {
+        return try {
+            val updates = mapOf(
+                "name" to name,
+                "destination" to destination,
+                "budget" to budget,
+                "numberOfPeople" to numberOfPeople,
+                "startDate" to startDate,
+                "endDate" to endDate
+            )
+            tripsCollection.document(tripId).update(updates).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

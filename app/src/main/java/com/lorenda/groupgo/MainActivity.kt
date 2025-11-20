@@ -17,6 +17,7 @@ import com.lorenda.groupgo.ui.auth.SignUpScreen
 import com.lorenda.groupgo.ui.theme.GroupGoTheme
 import com.lorenda.groupgo.ui.home.HomeScreen
 import com.lorenda.groupgo.ui.trips.CreateTripScreen
+import com.lorenda.groupgo.ui.profile.ProfileScreen
 import com.lorenda.groupgo.data.TripRepository
 import kotlinx.coroutines.launch
 
@@ -46,6 +47,7 @@ fun GroupGoApp() {
     // Track which screen to show
     var showSignUp by remember { mutableStateOf(false) }
     var showCreateTrip by remember { mutableStateOf(false) }
+    var showProfile by remember { mutableStateOf(false) }  // ONLY ADDITION: Profile state
 
     // Coroutine scope for async operations
     val scope = rememberCoroutineScope()
@@ -71,11 +73,30 @@ fun GroupGoApp() {
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         when {
-            showCreateTrip -> {
+            // ONLY ADDITION: Profile screen case
+            showProfile && isLoggedIn -> {
+                ProfileScreen(
+                    user = authViewModel.auth.currentUser,
+                    onBackClick = {
+                        showProfile = false
+                    },
+                    onLogoutClick = {
+                        authViewModel.signOut()
+                        showProfile = false
+                        Toast.makeText(context, "Logged out", Toast.LENGTH_SHORT).show()
+                    },
+                    onUpdateProfile = { displayName ->
+                        authViewModel.updateProfile(displayName)
+                    },
+                    isLoading = authState is AuthState.Loading
+                )
+            }
+            showCreateTrip && isLoggedIn -> {
                 CreateTripScreen(
                     onBackClick = {
                         showCreateTrip = false
                     },
+
                     onCreateClick = { name, destination, budget, people ->
                         scope.launch {
                             val result = tripRepository.createTrip(
@@ -105,6 +126,7 @@ fun GroupGoApp() {
                     }
                 )
             }
+
             isLoggedIn -> {
                 HomeScreen(
                     userEmail = authViewModel.auth.currentUser?.email ?: "User",
@@ -112,9 +134,30 @@ fun GroupGoApp() {
                     onCreateTripClick = {
                         showCreateTrip = true
                     },
+                    onProfileClick = {  // ONLY ADDITION: Profile click handler
+                        showProfile = true
+                    },
                     onLogoutClick = {
                         authViewModel.signOut()
                         Toast.makeText(context, "Logged out", Toast.LENGTH_SHORT).show()
+                    },
+                    onDeleteTrip = { tripId ->
+                        scope.launch {
+                            val result = tripRepository.deleteTrip(tripId)
+                            if (result.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Trip deleted successfully",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error deleting trip: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
                     }
                 )
             }
