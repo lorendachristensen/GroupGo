@@ -2,6 +2,7 @@ package com.lorenda.groupgo.data
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.channels.awaitClose
@@ -43,6 +44,18 @@ class TripRepository {
 
             tripsCollection.document(trip.id).set(trip).await()
             Result.success(trip.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateExploratoryTrip(
+        tripId: String,
+        name: String
+    ): Result<Unit> {
+        return try {
+            tripsCollection.document(tripId).update(mapOf("name" to name)).await()
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -153,6 +166,39 @@ class TripRepository {
                 "endDate" to endDate
             )
             tripsCollection.document(tripId).update(updates).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun removeParticipant(
+        tripId: String,
+        participantUid: String,
+        participantEmail: String
+    ): Result<Unit> {
+        return try {
+            val doc = tripsCollection.document(tripId)
+            firestore.runTransaction { tx ->
+                val snapshot = tx.get(doc)
+                val createdBy = snapshot.getString("createdBy")
+                if (participantUid.isNotBlank() && participantUid == createdBy) {
+                    throw IllegalArgumentException("Cannot remove organizer")
+                }
+                val participants = (snapshot.get("participants") as? List<String>).orEmpty()
+                val emails = (snapshot.get("participantsEmails") as? List<String>).orEmpty()
+                val updatedParticipants = participants.filterNot { it == participantUid }
+                val updatedEmails = emails.filterNot { it.equals(participantEmail, ignoreCase = true) }
+                val newCount = updatedParticipants.size.coerceAtLeast(1)
+                tx.update(
+                    doc,
+                    mapOf(
+                        "participants" to updatedParticipants,
+                        "participantsEmails" to updatedEmails,
+                        "numberOfPeople" to newCount.toString()
+                    )
+                )
+            }.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

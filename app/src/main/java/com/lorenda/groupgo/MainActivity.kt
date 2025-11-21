@@ -79,7 +79,7 @@ private suspend fun fetchParticipantsDisplay(
         val nameFromInvite = invitations.firstOrNull { it.acceptedByUid == uid }
             ?.acceptedByDisplayName?.takeIf { it.isNotBlank() }
         val name = nameFromProfile ?: nameFromInvite ?: email.ifBlank { "Unknown" }
-        ParticipantDisplay(name = name, email = email, status = "Participant", uid = uid)
+        ParticipantDisplay(name = name, email = email, status = "Survey Pending", uid = uid)
     }
 }
 @Composable
@@ -110,6 +110,9 @@ fun GroupGoApp() {
     var showChooseTripApproach by remember { mutableStateOf(false) }
     var showExploreTrip by remember { mutableStateOf(false) }
     var exploreIsSubmitting by remember { mutableStateOf(false) }
+    var exploreEditingTrip by remember { mutableStateOf<Trip?>(null) }
+    var exploreInvites by remember { mutableStateOf<List<Invitation>>(emptyList()) }
+    var exploreParticipants by remember { mutableStateOf<List<ParticipantDisplay>>(emptyList()) }
     var showTravelSurvey by remember { mutableStateOf(false) }
     var surveyTrip by remember { mutableStateOf<Trip?>(null) }
     var showAboutMe by remember { mutableStateOf(false) }
@@ -184,6 +187,27 @@ fun GroupGoApp() {
                 invitationRepository.getInvitationsForTrip(trip.id).collectLatest { invites ->
                     editInvites = invites
                     editParticipants = fetchParticipantsDisplay(trip, invites, profileRepository)
+                }
+            }
+        }
+    }
+    LaunchedEffect(exploreEditingTrip?.id, isLoggedIn) {
+        exploreInvites = emptyList()
+        exploreParticipants = emptyList()
+        val trip = exploreEditingTrip
+        if (trip != null && isLoggedIn) {
+            launch {
+                invitationRepository.getInvitationsForTrip(trip.id).collectLatest { invites ->
+                    exploreInvites = invites
+                    val baseParticipants = fetchParticipantsDisplay(trip, invites, profileRepository)
+                    exploreParticipants = baseParticipants.map { participant ->
+                        when {
+                            participant.uid == trip.createdBy -> participant.copy(status = "Organizer")
+                            participant.status.equals("participant", ignoreCase = true) -> participant.copy(status = "Joined")
+                            participant.status.isBlank() -> participant.copy(status = "Joined")
+                            else -> participant
+                        }
+                    }
                 }
             }
         }
@@ -319,8 +343,10 @@ fun GroupGoApp() {
                 )
             }
             showTripDetails && isLoggedIn && tripDetails != null -> {
+                val details = tripDetails!!
+                val isStructuredTrip = details.destination.isNotBlank() || details.budget.isNotBlank()
                 TripDetailsScreen(
-                    trip = tripDetails!!,
+                    trip = details,
                     participants = tripDetailsParticipants,
                     invitations = tripDetailsInvites,
                     onBackClick = {
@@ -328,15 +354,21 @@ fun GroupGoApp() {
                         tripDetails = null
                     },
                     onEditClick = {
-                        tripToEdit = tripDetails
                         showTripDetails = false
-                        showEditTrip = true
+                        if (isStructuredTrip) {
+                            tripToEdit = details
+                            showEditTrip = true
+                        } else {
+                            exploreEditingTrip = details
+                            showExploreTrip = true
+                        }
                     },
                     currentUserId = currentUserId,
                     onSurveyClick = {
                         surveyTrip = tripDetails
                         showTravelSurvey = true
-                    }
+                    },
+                    showEditButton = true
                 )
             }
             showChooseTripApproach && isLoggedIn -> {
@@ -415,53 +447,103 @@ fun GroupGoApp() {
             showExploreTrip && isLoggedIn -> {
                 ExploreTripScreen(
                     onBackClick = {
-                        showExploreTrip = false
-                        showChooseTripApproach = true
+                        if (exploreEditingTrip != null) {
+                            showExploreTrip = false
+                            tripDetails = exploreEditingTrip
+                            showTripDetails = true
+                            exploreEditingTrip = null
+                            exploreInvites = emptyList()
+                            exploreParticipants = emptyList()
+                        } else {
+                            showExploreTrip = false
+                            showChooseTripApproach = true
+                        }
                     },
-                    onCreateClick = { name, invitees ->
+                    onSubmitClick = { name, invitees ->
                         if (exploreIsSubmitting) return@ExploreTripScreen
                         exploreIsSubmitting = true
                         scope.launch {
                             try {
-                                val createResult = tripRepository.createExploratoryTrip(name)
-                                val tripId = createResult.getOrNull()
-                                val success = createResult.isSuccess && tripId != null
-                                if (success && tripId != null) {
-                                    val failedInvite = if (invitees.isNotEmpty()) {
-                                        invitees.firstNotNullOfOrNull { email ->
-                                            val inviteResult = invitationRepository.sendInvitation(
-                                                tripId = tripId,
-                                                tripName = name,
-                                                invitedEmail = email
-                                            )
-                                            if (inviteResult.isFailure) inviteResult else null
+                                val editing = exploreEditingTrip
+                                if (editing == null) {
+                                    val createResult = tripRepository.createExploratoryTrip(name)
+                                    val tripId = createResult.getOrNull()
+                                    val success = createResult.isSuccess && tripId != null
+                                    if (success && tripId != null) {
+                                        val failedInvite = if (invitees.isNotEmpty()) {
+                                            invitees.firstNotNullOfOrNull { email ->
+                                                val inviteResult = invitationRepository.sendInvitation(
+                                                    tripId = tripId,
+                                                    tripName = name,
+                                                    invitedEmail = email
+                                                )
+                                                if (inviteResult.isFailure) inviteResult else null
+                                            }
+                                        } else {
+                                            null
                                         }
-                                    } else {
-                                        null
-                                    }
 
-                                    failedInvite?.let { failure ->
-                                        Toast.makeText(
+                                        failedInvite?.let { failure ->
+                                            Toast.makeText(
+                                                context,
+                                                "Trip created, but some invites failed: ${failure.exceptionOrNull()?.message}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        } ?: Toast.makeText(
                                             context,
-                                            "Trip created, but some invites failed: ${failure.exceptionOrNull()?.message}",
+                                            if (invitees.isEmpty()) "Exploratory trip '$name' created" else "Trip and invites sent",
                                             Toast.LENGTH_LONG
                                         ).show()
-                                    } ?: Toast.makeText(
+
+                                        showExploreTrip = false
+                                        showChooseTripApproach = false
+                                        return@launch
+                                    }
+
+                                    Toast.makeText(
                                         context,
-                                        if (invitees.isEmpty()) "Exploratory trip '$name' created" else "Trip and invites sent",
+                                        "Error creating trip: ${createResult.exceptionOrNull()?.message ?: "Unknown error"}",
                                         Toast.LENGTH_LONG
                                     ).show()
+                                } else {
+                                    val updateResult = tripRepository.updateExploratoryTrip(editing.id, name)
+                                    if (updateResult.isSuccess) {
+                                        val failedInvite = if (invitees.isNotEmpty()) {
+                                            invitees.firstNotNullOfOrNull { email ->
+                                                val inviteResult = invitationRepository.sendInvitation(
+                                                    tripId = editing.id,
+                                                    tripName = name,
+                                                    invitedEmail = email
+                                                )
+                                                if (inviteResult.isFailure) inviteResult else null
+                                            }
+                                        } else null
 
-                                    showExploreTrip = false
-                                    showChooseTripApproach = false
-                                    return@launch
+                                        failedInvite?.let { failure ->
+                                            Toast.makeText(
+                                                context,
+                                                "Trip updated, but some invites failed: ${failure.exceptionOrNull()?.message}",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        } ?: Toast.makeText(
+                                            context,
+                                            if (invitees.isEmpty()) "Exploratory trip updated" else "Trip updated and invites sent",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+
+                                        exploreEditingTrip = null
+                                        showExploreTrip = false
+                                        tripDetails = editing.copy(name = name)
+                                        showTripDetails = true
+                                        return@launch
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Error updating trip: ${updateResult.exceptionOrNull()?.message ?: "Unknown error"}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
                                 }
-
-                                Toast.makeText(
-                                    context,
-                                    "Error creating trip: ${createResult.exceptionOrNull()?.message ?: "Unknown error"}",
-                                    Toast.LENGTH_LONG
-                                ).show()
                             } catch (e: Exception) {
                                 Toast.makeText(
                                     context,
@@ -473,7 +555,76 @@ fun GroupGoApp() {
                             }
                         }
                     },
-                    isSubmitting = exploreIsSubmitting
+                    isSubmitting = exploreIsSubmitting,
+                    initialTripName = exploreEditingTrip?.name.orEmpty(),
+                    buttonLabel = if (exploreEditingTrip != null) "Update and invite" else "Create and invite",
+                    participants = exploreParticipants,
+                    invitations = exploreInvites,
+                    onResendInvite = { invite ->
+                        if (exploreEditingTrip == null) return@ExploreTripScreen
+                        scope.launch {
+                            val result = invitationRepository.sendInvitation(
+                                tripId = exploreEditingTrip!!.id,
+                                tripName = exploreEditingTrip!!.name,
+                                invitedEmail = invite.invitedEmail
+                            )
+                            if (result.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Resent invite to ${invite.invitedEmail}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error resending invite: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
+                    onRemoveInvite = { invite ->
+                        if (exploreEditingTrip == null) return@ExploreTripScreen
+                        scope.launch {
+                            val result = invitationRepository.deleteInvitation(invite.id)
+                            if (result.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Removed invite for ${invite.invitedEmail}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error removing invite: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
+                    onRemoveParticipant = { participant ->
+                        if (exploreEditingTrip == null) return@ExploreTripScreen
+                        scope.launch {
+                            val result = tripRepository.removeParticipant(
+                                tripId = exploreEditingTrip!!.id,
+                                participantUid = participant.uid,
+                                participantEmail = participant.email
+                            )
+                            if (result.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Removed ${participant.email}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error removing: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
                 )
             }
             showEditTrip && isLoggedIn && tripToEdit != null -> {

@@ -26,7 +26,8 @@ fun TripDetailsScreen(
     onBackClick: () -> Unit = {},
     onEditClick: () -> Unit = {},
     currentUserId: String = "",
-    onSurveyClick: () -> Unit = {}
+    onSurveyClick: () -> Unit = {},
+    showEditButton: Boolean = true
 ) {
     val pendingOrDeclined = invitations.filter { it.status == "pending" || it.status == "declined" }
 
@@ -40,8 +41,10 @@ fun TripDetailsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onEditClick) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Trip")
+                    if (showEditButton) {
+                        IconButton(onClick = onEditClick) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Trip")
+                        }
                     }
                 }
             )
@@ -91,7 +94,7 @@ fun TripDetailsScreen(
                 )
             }
             val resolvedParticipants = if (participants.isEmpty()) {
-                listOf(ParticipantDisplay("None yet", "", "Participant"))
+                listOf(ParticipantDisplay("None yet", "", "Survey Pending"))
             } else {
                 participants
             }
@@ -182,8 +185,13 @@ private fun ParticipantRow(
                     Text("Travel Survey")
                 }
             } else {
+                val statusText = when {
+                    person.status.isBlank() -> "Survey Pending"
+                    person.status.equals("Participant", ignoreCase = true) -> "Survey Pending"
+                    else -> person.status
+                }
                 Text(
-                    text = person.status.ifBlank { "Survey pending" },
+                    text = statusText,
                     style = MaterialTheme.typography.labelMedium
                 )
             }
@@ -210,5 +218,5 @@ private fun TripDetailsPreview() {
         Invitation(invitedEmail = "pending@example.com", status = "pending"),
         Invitation(invitedEmail = "declined@example.com", status = "declined")
     )
-    TripDetailsScreen(trip, participants, invites, currentUserId = "1")
+    TripDetailsScreen(trip, participants, invites, currentUserId = "1", showEditButton = true)
 }

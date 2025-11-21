@@ -154,4 +154,13 @@ class InvitationRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun deleteInvitation(invitationId: String): Result<Unit> {
+        return try {
+            invitationsCollection.document(invitationId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
