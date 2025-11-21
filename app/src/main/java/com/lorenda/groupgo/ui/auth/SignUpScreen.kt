@@ -15,10 +15,12 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SignUpScreen(
     modifier: Modifier = Modifier,
-    onSignUpClick: (String, String) -> Unit = { _, _ -> },
+    onSignUpClick: (String, String, String, String) -> Unit = { _, _, _, _ -> },
     onLoginClick: () -> Unit = {},
     isLoading: Boolean = false
 ) {
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -47,6 +49,30 @@ fun SignUpScreen(
         )
 
         Spacer(modifier = Modifier.height(32.dp))
+
+        // First Name
+        OutlinedTextField(
+            value = firstName,
+            onValueChange = { firstName = it },
+            label = { Text("First Name") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Last Name
+        OutlinedTextField(
+            value = lastName,
+            onValueChange = { lastName = it },
+            label = { Text("Last Name") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Email Field
         OutlinedTextField(
@@ -106,11 +132,13 @@ fun SignUpScreen(
         Button(
             onClick = {
                 if (password == confirmPassword) {
-                    onSignUpClick(email, password)
+                    onSignUpClick(firstName, lastName, email, password)
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = email.isNotBlank() &&
+            enabled = firstName.isNotBlank() &&
+                    lastName.isNotBlank() &&
+                    email.isNotBlank() &&
                     password.length >= 6 &&
                     password == confirmPassword &&
                     !isLoading

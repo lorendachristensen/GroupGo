@@ -69,7 +69,29 @@ class InvitationRepository {
         awaitClose { subscription.remove() }
     }
 
-    // Accept invitation → add user to trip participants
+    // All invitations for a specific trip (for organizers)
+    fun getInvitationsForTrip(tripId: String): Flow<List<Invitation>> = callbackFlow {
+        val subscription = invitationsCollection
+            .whereEqualTo("tripId", tripId)
+            .whereEqualTo("status", "pending")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val invitations = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Invitation::class.java)?.copy(id = doc.id)
+                } ?: emptyList()
+
+                trySend(invitations)
+            }
+
+        awaitClose { subscription.remove() }
+    }
+
+    // Accept invitation & add user to trip participants
     suspend fun acceptInvitation(invitationId: String, tripId: String): Result<Unit> {
         return try {
             val currentUser = auth.currentUser ?: return Result.failure(Exception("Not authenticated"))
@@ -83,13 +105,13 @@ class InvitationRepository {
 
                 if (!invitationSnapshot.exists()) throw Exception("Invitation not found")
 
-                // Update invitation status
-                transaction.update(invitationRef, mapOf(
-                    "status" to "accepted",
-                    "acceptedAt" to System.currentTimeMillis()
-                ))
+                transaction.update(
+                    invitationRef, mapOf(
+                        "status" to "accepted",
+                        "acceptedAt" to System.currentTimeMillis()
+                    )
+                )
 
-                // Add user UID to trip participants (create field if not exists)
                 val currentParticipants = tripSnapshot.get("participants") as? List<String> ?: emptyList()
                 if (!currentParticipants.contains(currentUser.uid)) {
                     transaction.update(tripRef, "participants", currentParticipants + currentUser.uid)
@@ -112,5 +134,13 @@ class InvitationRepository {
             Result.failure(e)
         }
     }
-}
 
+    suspend fun cancelInvitation(invitationId: String): Result<Unit> {
+        return try {
+            invitationsCollection.document(invitationId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}

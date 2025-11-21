@@ -79,4 +79,7 @@ dependencies {
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Stripe PaymentSheet
+    implementation("com.stripe:stripe-android:20.50.0")
 }

@@ -2,14 +2,44 @@ package com.lorenda.groupgo.ui.home
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -23,11 +53,16 @@ import com.lorenda.groupgo.data.Trip
 @Composable
 fun HomeScreen(
     userEmail: String,
-    trips: List<Trip> = emptyList(),
+    organizedTrips: List<Trip> = emptyList(),
+    participatingTrips: List<Trip> = emptyList(),
     onCreateTripClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {},  // NEW PARAMETER ADDED
+    onProfileClick: () -> Unit = {},
+    pendingInvitesCount: Int = 0,
+    onInvitesHubClick: () -> Unit = {},
+    onTripClick: (Trip) -> Unit = {},
+    onInviteClick: (Trip) -> Unit = {},
     onLogoutClick: () -> Unit = {},
-    onDeleteTrip: (String) -> Unit = {}  // ADDED TO MATCH YOUR EXISTING IMPLEMENTATION
+    onDeleteTrip: (String) -> Unit = {}
 ) {
     var tripToDelete by remember { mutableStateOf<Trip?>(null) }
 
@@ -40,11 +75,17 @@ fun HomeScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    // NEW PROFILE BUTTON ADDED
                     IconButton(onClick = onProfileClick) {
                         Icon(
                             Icons.Default.Person,
                             contentDescription = "Profile",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                    IconButton(onClick = onInvitesHubClick) {
+                        Icon(
+                            Icons.Default.Email,
+                            contentDescription = "Invitations",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -72,7 +113,6 @@ fun HomeScreen(
                 .padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Welcome Section
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -102,98 +142,147 @@ fun HomeScreen(
                 }
             }
 
-            // Trips Section
-            Text(
-                text = "Your Trips",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .align(Alignment.Start)
-            )
-
-            if (trips.isEmpty()) {
-                // Empty State
-                Box(
+            if (pendingInvitesCount > 0) {
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                    onClick = onInvitesHubClick
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "🌍",
-                            fontSize = 64.sp
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "No trips yet",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Start planning your next adventure!",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Button(
-                            onClick = onCreateTripClick,
-                            modifier = Modifier.padding(horizontal = 32.dp)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Create Your First Trip")
+                        Column {
+                            Text(
+                                text = "You have $pendingInvitesCount invite${if (pendingInvitesCount == 1) "" else "s"}",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = "Tap to review and accept/decline",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         }
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
                     }
                 }
-            } else {
-                // Show trips list
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(trips.size) { index ->
-                        val trip = trips[index]
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Organized by you",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                if (organizedTrips.isEmpty()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.Start
+                        ) {
+                            Text("No trips yet", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Start planning your next adventure!",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(onClick = onCreateTripClick) {
+                                Icon(Icons.Default.Add, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Create Your First Trip")
+                            }
+                        }
+                    }
+                } else {
+                    organizedTrips.forEach { trip ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .combinedClickable(
-                                    onClick = { /* Navigate to trip details later */ },
-                                    onLongClick = {
-                                        tripToDelete = trip
-                                    }
+                                    onClick = { onTripClick(trip) },
+                                    onLongClick = { tripToDelete = trip }
                                 )
                         ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Text(
-                                    text = trip.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(trip.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "📍 ${trip.destination}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
+                                Text("Destination: ${trip.destination}", style = MaterialTheme.typography.bodyMedium)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row {
-                                    Text(
-                                        text = "💰 $${trip.budget}/person",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
+                                    Text("Budget: $${trip.budget}/person", style = MaterialTheme.typography.bodySmall)
                                     Spacer(modifier = Modifier.width(16.dp))
-                                    Text(
-                                        text = "👥 ${trip.numberOfPeople} people",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
+                                    Text("People: ${trip.numberOfPeople}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(onClick = { onInviteClick(trip) }) {
+                                        Text("Invite friends")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (participatingTrips.isNotEmpty()) {
+                    Text(
+                        text = "Trips you're joining",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    participatingTrips.forEach { trip ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .combinedClickable(
+                                    onClick = { onTripClick(trip) },
+                                    onLongClick = { tripToDelete = trip }
+                                )
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(trip.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Destination: ${trip.destination}", style = MaterialTheme.typography.bodyMedium)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row {
+                                    Text("Budget: $${trip.budget}/person", style = MaterialTheme.typography.bodySmall)
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Text("People: ${trip.numberOfPeople}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    TextButton(onClick = { onInviteClick(trip) }) {
+                                        Text("Invite friends")
+                                    }
                                 }
                             }
                         }
@@ -201,7 +290,6 @@ fun HomeScreen(
                 }
             }
 
-            // Delete confirmation dialog
             tripToDelete?.let { trip ->
                 AlertDialog(
                     onDismissRequest = { tripToDelete = null },
@@ -231,12 +319,17 @@ fun HomeScreen(
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
-    MaterialTheme {
-        HomeScreen(
-            userEmail = "test@example.com",
-            onCreateTripClick = {},
-            onProfileClick = {},
-            onLogoutClick = {}
-        )
-    }
+    HomeScreen(
+        userEmail = "test@example.com",
+        organizedTrips = listOf(
+            Trip(
+                id = "1",
+                name = "Weekend Getaway",
+                destination = "Nashville",
+                budget = "400",
+                numberOfPeople = "3"
+            )
+        ),
+        participatingTrips = emptyList()
+    )
 }

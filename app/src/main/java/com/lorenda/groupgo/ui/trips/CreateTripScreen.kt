@@ -12,23 +12,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.text.SimpleDateFormat
-import java.util.*
+import com.lorenda.groupgo.utils.AppDatePickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateTripScreen(
     onBackClick: () -> Unit = {},
-    onCreateClick: (String, String, String, String) -> Unit = { _, _, _, _ -> }
+    onCreateClick: (String, String, String, String, String, String, List<String>) -> Unit = { _, _, _, _, _, _, _ -> }
 ) {
     var tripName by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var budget by remember { mutableStateOf("") }
     var numberOfPeople by remember { mutableStateOf("") }
+    var inviteEmailsRaw by remember { mutableStateOf("") }
 
-    // For date pickers - simplified for now
     var startDate by remember { mutableStateOf("Select date") }
     var endDate by remember { mutableStateOf("Select date") }
+    var showStartPicker by remember { mutableStateOf(false) }
+    var showEndPicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -80,14 +81,7 @@ fun CreateTripScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Start Date
-                OutlinedCard(
-                    onClick = {
-                        // For now, just set a sample date
-                        startDate = SimpleDateFormat("MMM dd, yyyy", Locale.US)
-                            .format(Date())
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
+                OutlinedCard(onClick = { showStartPicker = true }, modifier = Modifier.weight(1f)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -114,16 +108,7 @@ fun CreateTripScreen(
                 }
 
                 // End Date
-                OutlinedCard(
-                    onClick = {
-                        // For now, just set a sample date
-                        val calendar = Calendar.getInstance()
-                        calendar.add(Calendar.DAY_OF_MONTH, 7)
-                        endDate = SimpleDateFormat("MMM dd, yyyy", Locale.US)
-                            .format(calendar.time)
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
+                OutlinedCard(onClick = { showEndPicker = true }, modifier = Modifier.weight(1f)) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -224,10 +209,21 @@ fun CreateTripScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            OutlinedTextField(
+                value = inviteEmailsRaw,
+                onValueChange = { inviteEmailsRaw = it },
+                label = { Text("Invite friends (emails, comma separated)") },
+                placeholder = { Text("friend1@example.com, friend2@example.com") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
             // Create Button
             Button(
                 onClick = {
-                    onCreateClick(tripName, destination, budget, numberOfPeople)
+                    val inviteList = inviteEmailsRaw.split(",", ";")
+                        .map { it.trim() }
+                        .filter { it.contains("@") }
+                    onCreateClick(tripName, destination, startDate, endDate, budget, numberOfPeople, inviteList)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = tripName.isNotBlank() &&
@@ -243,6 +239,24 @@ fun CreateTripScreen(
                 )
             }
         }
+    }
+
+    if (showStartPicker) {
+        AppDatePickerDialog(
+            onDateSelected = { date ->
+                startDate = date
+            },
+            onDismiss = { showStartPicker = false }
+        )
+    }
+
+    if (showEndPicker) {
+        AppDatePickerDialog(
+            onDateSelected = { date ->
+                endDate = date
+            },
+            onDismiss = { showEndPicker = false }
+        )
     }
 }
 

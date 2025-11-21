@@ -10,6 +10,5 @@ data class Trip(
     val numberOfPeople: String = "",
     val createdBy: String = "",
     val createdAt: Long = System.currentTimeMillis(),
-
+    val participants: List<String> = emptyList()
 )
-

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,6 +15,7 @@ import kotlinx.coroutines.tasks.await
 
 class AuthViewModel : ViewModel() {
     val auth: FirebaseAuth = Firebase.auth
+    private val usersCollection = Firebase.firestore.collection("users")
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
@@ -29,7 +32,19 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                auth.signInWithEmailAndPassword(email, password).await()
+                val result = auth.signInWithEmailAndPassword(email, password).await()
+                val user = result.user
+                if (user != null) {
+                    val displayName = user.displayName ?: ""
+                    val profile = mapOf(
+                        "uid" to user.uid,
+                        "email" to (user.email ?: email),
+                        "displayName" to displayName
+                    )
+                    usersCollection.document(user.uid)
+                        .set(profile, SetOptions.merge())
+                        .await()
+                }
                 _authState.value = AuthState.Success("Login successful!")
                 _isLoggedIn.value = true
             } catch (e: Exception) {
@@ -38,11 +53,28 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun signUp(email: String, password: String) {
+    fun signUp(email: String, password: String, firstName: String, lastName: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                auth.createUserWithEmailAndPassword(email, password).await()
+                val result = auth.createUserWithEmailAndPassword(email, password).await()
+                val uid = result.user?.uid ?: throw Exception("User not created")
+
+                // Update display name
+                val displayName = "$firstName $lastName".trim()
+                val profileUpdates = userProfileChangeRequest { this.displayName = displayName }
+                result.user?.updateProfile(profileUpdates)?.await()
+
+                // Save profile to Firestore
+                val profile = mapOf(
+                    "uid" to uid,
+                    "firstName" to firstName,
+                    "lastName" to lastName,
+                    "email" to email,
+                    "displayName" to displayName
+                )
+                usersCollection.document(uid).set(profile).await()
+
                 _authState.value = AuthState.Success("Account created successfully!")
                 _isLoggedIn.value = true
             } catch (e: Exception) {
