@@ -22,6 +22,7 @@ import com.lorenda.groupgo.ui.trips.EditTripScreen
 import com.lorenda.groupgo.ui.trips.ExploreTripScreen
 import com.lorenda.groupgo.ui.trips.TripDetailsScreen
 import com.lorenda.groupgo.ui.trips.ParticipantDisplay
+import com.lorenda.groupgo.ui.trips.TravelSurveyScreen
 import com.lorenda.groupgo.ui.profile.ProfileScreen
 import com.lorenda.groupgo.data.TripRepository
 import com.lorenda.groupgo.data.Trip
@@ -78,7 +79,7 @@ private suspend fun fetchParticipantsDisplay(
         val nameFromInvite = invitations.firstOrNull { it.acceptedByUid == uid }
             ?.acceptedByDisplayName?.takeIf { it.isNotBlank() }
         val name = nameFromProfile ?: nameFromInvite ?: email.ifBlank { "Unknown" }
-        ParticipantDisplay(name = name, email = email, status = "Participant")
+        ParticipantDisplay(name = name, email = email, status = "Participant", uid = uid)
     }
 }
 @Composable
@@ -87,6 +88,7 @@ fun GroupGoApp() {
     val authState by authViewModel.authState.collectAsState()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val context = LocalContext.current
+    val currentUserId = authViewModel.auth.currentUser?.uid.orEmpty()
 
     // Trip repository and trips list
     val tripRepository = remember { TripRepository() }
@@ -108,6 +110,8 @@ fun GroupGoApp() {
     var showChooseTripApproach by remember { mutableStateOf(false) }
     var showExploreTrip by remember { mutableStateOf(false) }
     var exploreIsSubmitting by remember { mutableStateOf(false) }
+    var showTravelSurvey by remember { mutableStateOf(false) }
+    var surveyTrip by remember { mutableStateOf<Trip?>(null) }
     var showAboutMe by remember { mutableStateOf(false) }
     var showTravelInfo by remember { mutableStateOf(false) }
     var showPaymentCards by remember { mutableStateOf(false) }
@@ -306,6 +310,14 @@ fun GroupGoApp() {
                     email = authViewModel.auth.currentUser?.email.orEmpty()
                 )
             }
+            showTravelSurvey && isLoggedIn && surveyTrip != null -> {
+                TravelSurveyScreen(
+                    tripName = surveyTrip?.name.orEmpty(),
+                    onBackClick = {
+                        showTravelSurvey = false
+                    }
+                )
+            }
             showTripDetails && isLoggedIn && tripDetails != null -> {
                 TripDetailsScreen(
                     trip = tripDetails!!,
@@ -319,6 +331,11 @@ fun GroupGoApp() {
                         tripToEdit = tripDetails
                         showTripDetails = false
                         showEditTrip = true
+                    },
+                    currentUserId = currentUserId,
+                    onSurveyClick = {
+                        surveyTrip = tripDetails
+                        showTravelSurvey = true
                     }
                 )
             }

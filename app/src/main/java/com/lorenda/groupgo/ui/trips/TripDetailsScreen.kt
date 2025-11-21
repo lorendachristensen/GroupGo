@@ -24,7 +24,9 @@ fun TripDetailsScreen(
     participants: List<ParticipantDisplay> = emptyList(),
     invitations: List<Invitation> = emptyList(),
     onBackClick: () -> Unit = {},
-    onEditClick: () -> Unit = {}
+    onEditClick: () -> Unit = {},
+    currentUserId: String = "",
+    onSurveyClick: () -> Unit = {}
 ) {
     val pendingOrDeclined = invitations.filter { it.status == "pending" || it.status == "declined" }
 
@@ -88,8 +90,17 @@ fun TripDetailsScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-            items(participants.ifEmpty { listOf(ParticipantDisplay("None yet", "—", "Participant")) }) { person ->
-                ParticipantRow(person)
+            val resolvedParticipants = if (participants.isEmpty()) {
+                listOf(ParticipantDisplay("None yet", "", "Participant"))
+            } else {
+                participants
+            }
+            items(resolvedParticipants) { person ->
+                ParticipantRow(
+                    person = person,
+                    isCurrentUser = person.uid.isNotBlank() && person.uid == currentUserId,
+                    onSurveyClick = onSurveyClick
+                )
             }
 
             item {
@@ -138,7 +149,11 @@ fun TripDetailsScreen(
 }
 
 @Composable
-private fun ParticipantRow(person: ParticipantDisplay) {
+private fun ParticipantRow(
+    person: ParticipantDisplay,
+    isCurrentUser: Boolean,
+    onSurveyClick: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -162,10 +177,16 @@ private fun ParticipantRow(person: ParticipantDisplay) {
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
-            Text(
-                text = person.status,
-                style = MaterialTheme.typography.labelMedium
-            )
+            if (isCurrentUser) {
+                TextButton(onClick = onSurveyClick) {
+                    Text("Travel Survey")
+                }
+            } else {
+                Text(
+                    text = person.status.ifBlank { "Survey pending" },
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
         }
     }
 }
@@ -182,12 +203,12 @@ private fun TripDetailsPreview() {
         numberOfPeople = "2"
     )
     val participants = listOf(
-        ParticipantDisplay("Ava Chen", "ava@example.com", "Participant"),
-        ParticipantDisplay("Sam Lee", "sam@example.com", "Participant")
+        ParticipantDisplay("Ava Chen", "ava@example.com", "Participant", uid = "1"),
+        ParticipantDisplay("Sam Lee", "sam@example.com", "Participant", uid = "2")
     )
     val invites = listOf(
         Invitation(invitedEmail = "pending@example.com", status = "pending"),
         Invitation(invitedEmail = "declined@example.com", status = "declined")
     )
-    TripDetailsScreen(trip, participants, invites)
+    TripDetailsScreen(trip, participants, invites, currentUserId = "1")
 }
