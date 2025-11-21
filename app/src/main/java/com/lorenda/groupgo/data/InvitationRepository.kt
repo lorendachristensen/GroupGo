@@ -69,7 +69,28 @@ class InvitationRepository {
         awaitClose { subscription.remove() }
     }
 
-    // Accept invitation → add user to trip participants
+    // Get invitations for a specific trip
+    fun getInvitationsForTrip(tripId: String): Flow<List<Invitation>> = callbackFlow {
+        val subscription = invitationsCollection
+            .whereEqualTo("tripId", tripId)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                val invitations = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Invitation::class.java)?.copy(id = doc.id)
+                } ?: emptyList()
+
+                trySend(invitations)
+            }
+
+        awaitClose { subscription.remove() }
+    }
+
+    // Accept invitation and add user to trip participants
     suspend fun acceptInvitation(invitationId: String, tripId: String): Result<Unit> {
         return try {
             val currentUser = auth.currentUser ?: return Result.failure(Exception("Not authenticated"))
@@ -82,17 +103,25 @@ class InvitationRepository {
                 val tripSnapshot = transaction.get(tripRef)
 
                 if (!invitationSnapshot.exists()) throw Exception("Invitation not found")
+                val invitedEmail = invitationSnapshot.getString("invitedEmail").orEmpty()
+                val resolvedEmail = currentUser.email ?: invitedEmail
 
                 // Update invitation status
                 transaction.update(invitationRef, mapOf(
                     "status" to "accepted",
-                    "acceptedAt" to System.currentTimeMillis()
+                    "acceptedAt" to System.currentTimeMillis(),
+                    "acceptedByUid" to currentUser.uid,
+                    "acceptedByDisplayName" to (currentUser.displayName ?: resolvedEmail)
                 ))
 
-                // Add user UID to trip participants (create field if not exists)
+                // Add user UID/email to trip participants (create field if not exists)
                 val currentParticipants = tripSnapshot.get("participants") as? List<String> ?: emptyList()
+                val currentParticipantEmails = tripSnapshot.get("participantsEmails") as? List<String> ?: emptyList()
                 if (!currentParticipants.contains(currentUser.uid)) {
-                    transaction.update(tripRef, "participants", currentParticipants + currentUser.uid)
+                    transaction.update(tripRef, mapOf(
+                        "participants" to (currentParticipants + currentUser.uid),
+                        "participantsEmails" to (currentParticipantEmails + resolvedEmail)
+                    ))
                 }
             }.await()
 
@@ -113,4 +142,3 @@ class InvitationRepository {
         }
     }
 }
-

@@ -18,12 +18,13 @@ import com.lorenda.groupgo.utils.DatePickerDialog as GroupGoDatePickerDialog
 @Composable
 fun CreateTripScreen(
     onBackClick: () -> Unit = {},
-    onCreateClick: (String, String, String, String) -> Unit = { _, _, _, _ -> }
+    onCreateClick: (String, String, String, String, String) -> Unit = { _, _, _, _, _ -> }
 ) {
     var tripName by remember { mutableStateOf("") }
     var destination by remember { mutableStateOf("") }
     var budget by remember { mutableStateOf("") }
     var numberOfPeople by remember { mutableStateOf("") }
+    var inviteEmail by remember { mutableStateOf("") }
 
     // For date pickers - simplified for now
     var startDate by remember { mutableStateOf("Select date") }
@@ -237,10 +238,22 @@ fun CreateTripScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            // Invite by email (optional)
+            OutlinedTextField(
+                value = inviteEmail,
+                onValueChange = { inviteEmail = it },
+                label = { Text("Invite by Email (optional)") },
+                placeholder = { Text("friend@example.com") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Create Button
             Button(
                 onClick = {
-                    onCreateClick(tripName, destination, budget, numberOfPeople)
+                    onCreateClick(tripName, destination, budget, numberOfPeople, inviteEmail)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = tripName.isNotBlank() &&

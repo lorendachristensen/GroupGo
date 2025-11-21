@@ -18,12 +18,18 @@ import com.lorenda.groupgo.ui.theme.GroupGoTheme
 import com.lorenda.groupgo.ui.home.HomeScreen
 import com.lorenda.groupgo.ui.trips.CreateTripScreen
 import com.lorenda.groupgo.ui.trips.EditTripScreen
+import com.lorenda.groupgo.ui.trips.TripDetailsScreen
+import com.lorenda.groupgo.ui.trips.ParticipantDisplay
 import com.lorenda.groupgo.ui.profile.ProfileScreen
 import com.lorenda.groupgo.data.TripRepository
 import com.lorenda.groupgo.data.Trip
 import com.lorenda.groupgo.data.ProfileRepository
 import com.lorenda.groupgo.data.UserProfile
+import com.lorenda.groupgo.data.InvitationRepository
+import com.lorenda.groupgo.data.Invitation
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +43,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private suspend fun fetchParticipantsDisplay(
+    trip: Trip,
+    invitations: List<Invitation>,
+    profileRepository: ProfileRepository
+): List<ParticipantDisplay> {
+    val uidEmailMap = mutableMapOf<String, String>()
+    trip.participants.forEachIndexed { index, uid ->
+        trip.participantsEmails.getOrNull(index)?.takeIf { it.isNotBlank() }?.let { email ->
+            uidEmailMap[uid] = email
+        }
+    }
+    trip.participants.forEach { uid ->
+        if (uid == trip.createdBy && trip.createdByEmail.isNotBlank()) {
+            uidEmailMap.putIfAbsent(uid, trip.createdByEmail)
+        }
+    }
+    invitations.filter { it.status == "accepted" }.forEach { invite ->
+        val uid = invite.acceptedByUid
+        if (uid.isNotBlank() && invite.invitedEmail.isNotBlank()) {
+            uidEmailMap.putIfAbsent(uid, invite.invitedEmail)
+        }
+    }
+
+    return trip.participants.map { uid ->
+        val email = uidEmailMap[uid] ?: "Unknown"
+        val profile = profileRepository.getProfile(uid).getOrNull()
+        val nameFromProfile = profile?.displayName?.takeIf { it.isNotBlank() }
+        val nameFromInvite = invitations.firstOrNull { it.acceptedByUid == uid }
+            ?.acceptedByDisplayName?.takeIf { it.isNotBlank() }
+        val name = nameFromProfile ?: nameFromInvite ?: email.ifBlank { "Unknown" }
+        ParticipantDisplay(name = name, email = email, status = "Participant")
+    }
+}
 @Composable
 fun GroupGoApp() {
     val authViewModel: AuthViewModel = viewModel()
@@ -48,6 +87,10 @@ fun GroupGoApp() {
     val tripRepository = remember { TripRepository() }
     val trips by tripRepository.getUserTrips().collectAsState(initial = emptyList())
     val profileRepository = remember { ProfileRepository() }
+    val invitationRepository = remember { InvitationRepository() }
+    val pendingInvites by remember(isLoggedIn) {
+        if (isLoggedIn) invitationRepository.getPendingInvitations() else flowOf(emptyList())
+    }.collectAsState(initial = emptyList())
     var userProfile by remember { mutableStateOf<UserProfile?>(null) }
     var isProfileLoading by remember { mutableStateOf(false) }
 
@@ -56,7 +99,15 @@ fun GroupGoApp() {
     var showCreateTrip by remember { mutableStateOf(false) }
     var showProfile by remember { mutableStateOf(false) }  // ONLY ADDITION: Profile state
     var showEditTrip by remember { mutableStateOf(false) }
+    var showTripDetails by remember { mutableStateOf(false) }
     var tripToEdit by remember { mutableStateOf<Trip?>(null) }
+    var tripDetails by remember { mutableStateOf<Trip?>(null) }
+
+    var tripDetailsInvites by remember { mutableStateOf<List<Invitation>>(emptyList()) }
+    var tripDetailsParticipants by remember { mutableStateOf<List<ParticipantDisplay>>(emptyList()) }
+
+    var editInvites by remember { mutableStateOf<List<Invitation>>(emptyList()) }
+    var editParticipants by remember { mutableStateOf<List<ParticipantDisplay>>(emptyList()) }
 
     // Coroutine scope for async operations
     val scope = rememberCoroutineScope()
@@ -91,6 +142,35 @@ fun GroupGoApp() {
             }
         } else {
             userProfile = null
+        }
+    }
+
+    LaunchedEffect(tripDetails?.id, isLoggedIn) {
+        tripDetailsInvites = emptyList()
+        tripDetailsParticipants = emptyList()
+        val trip = tripDetails
+        if (trip != null && isLoggedIn) {
+            // Collect invitations for this trip
+            launch {
+                invitationRepository.getInvitationsForTrip(trip.id).collectLatest { invites ->
+                    tripDetailsInvites = invites
+                    tripDetailsParticipants = fetchParticipantsDisplay(trip, invites, profileRepository)
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(tripToEdit?.id, isLoggedIn) {
+        editInvites = emptyList()
+        editParticipants = emptyList()
+        val trip = tripToEdit
+        if (trip != null && isLoggedIn) {
+            launch {
+                invitationRepository.getInvitationsForTrip(trip.id).collectLatest { invites ->
+                    editInvites = invites
+                    editParticipants = fetchParticipantsDisplay(trip, invites, profileRepository)
+                }
+            }
         }
     }
 
@@ -135,13 +215,29 @@ fun GroupGoApp() {
                     isLoading = isProfileLoading || authState is AuthState.Loading
                 )
             }
+            showTripDetails && isLoggedIn && tripDetails != null -> {
+                TripDetailsScreen(
+                    trip = tripDetails!!,
+                    participants = tripDetailsParticipants,
+                    invitations = tripDetailsInvites,
+                    onBackClick = {
+                        showTripDetails = false
+                        tripDetails = null
+                    },
+                    onEditClick = {
+                        tripToEdit = tripDetails
+                        showTripDetails = false
+                        showEditTrip = true
+                    }
+                )
+            }
             showCreateTrip && isLoggedIn -> {
                 CreateTripScreen(
                     onBackClick = {
                         showCreateTrip = false
                     },
 
-                    onCreateClick = { name, destination, budget, people ->
+                    onCreateClick = { name, destination, budget, people, inviteEmail ->
                         scope.launch {
                             val result = tripRepository.createTrip(
                                 name = name,
@@ -153,6 +249,27 @@ fun GroupGoApp() {
                             )
 
                             if (result.isSuccess) {
+                                val tripId = result.getOrNull()
+                                if (!inviteEmail.isNullOrBlank() && tripId != null) {
+                                    val inviteResult = invitationRepository.sendInvitation(
+                                        tripId = tripId,
+                                        tripName = name,
+                                        invitedEmail = inviteEmail.trim()
+                                    )
+                                    if (inviteResult.isSuccess) {
+                                        Toast.makeText(
+                                            context,
+                                            "Invitation sent to $inviteEmail",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Trip created but invite failed: ${inviteResult.exceptionOrNull()?.message}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
                                 Toast.makeText(
                                     context,
                                     "Trip '$name' created successfully!",
@@ -197,6 +314,14 @@ fun GroupGoApp() {
                                 ).show()
                                 showEditTrip = false
                                 tripToEdit = null
+                                tripDetails = trip.copy(
+                                    name = name,
+                                    destination = destination,
+                                    budget = budget,
+                                    numberOfPeople = people,
+                                    startDate = startDate,
+                                    endDate = endDate
+                                )
                             } else {
                                 Toast.makeText(
                                     context,
@@ -205,7 +330,53 @@ fun GroupGoApp() {
                                 ).show()
                             }
                         }
-                    }
+                    },
+                    onSendInvite = { tripId, tripName, inviteEmail ->
+                        scope.launch {
+                            val inviteResult = invitationRepository.sendInvitation(
+                                tripId = tripId,
+                                tripName = tripName,
+                                invitedEmail = inviteEmail
+                            )
+                            if (inviteResult.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Invitation sent to $inviteEmail",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error sending invite: ${inviteResult.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
+                    onResendInvite = { tripId, tripName, inviteEmail ->
+                        scope.launch {
+                            val inviteResult = invitationRepository.sendInvitation(
+                                tripId = tripId,
+                                tripName = tripName,
+                                invitedEmail = inviteEmail
+                            )
+                            if (inviteResult.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Resent invite to $inviteEmail",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error resending invite: ${inviteResult.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
+                    participants = editParticipants,
+                    invites = editInvites
                 )
             }
 
@@ -244,6 +415,47 @@ fun GroupGoApp() {
                     onEditTrip = { trip ->
                         tripToEdit = trip
                         showEditTrip = true
+                    },
+                    onTripClick = { trip ->
+                        tripDetails = trip
+                        showTripDetails = true
+                    },
+                    invites = pendingInvites,
+                    onAcceptInvite = { invitation ->
+                        scope.launch {
+                            val result = invitationRepository.acceptInvitation(invitation.id, invitation.tripId)
+                            if (result.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Joined trip '${invitation.tripName}'",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error accepting invite: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
+                    onDeclineInvite = { invitation ->
+                        scope.launch {
+                            val result = invitationRepository.declineInvitation(invitation.id)
+                            if (result.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Invitation declined",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error declining invite: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
                     }
                 )
             }

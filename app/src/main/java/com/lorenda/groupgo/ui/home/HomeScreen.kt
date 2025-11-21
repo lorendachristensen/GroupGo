@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lorenda.groupgo.data.Trip
+import com.lorenda.groupgo.data.Invitation
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -29,7 +30,11 @@ fun HomeScreen(
     onProfileClick: () -> Unit = {},  // NEW PARAMETER ADDED
     onLogoutClick: () -> Unit = {},
     onDeleteTrip: (String) -> Unit = {},  // ADDED TO MATCH YOUR EXISTING IMPLEMENTATION
-    onEditTrip: (Trip) -> Unit = {}
+    onEditTrip: (Trip) -> Unit = {},
+    onTripClick: (Trip) -> Unit = {},
+    invites: List<Invitation> = emptyList(),
+    onAcceptInvite: (Invitation) -> Unit = {},
+    onDeclineInvite: (Invitation) -> Unit = {}
 ) {
     var tripToDelete by remember { mutableStateOf<Trip?>(null) }
 
@@ -114,6 +119,69 @@ fun HomeScreen(
                     .align(Alignment.Start)
             )
 
+            // Pending invites section
+            if (invites.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Invitations",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        invites.forEach { invite ->
+                            ElevatedCard(
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp)
+                                ) {
+                                    Text(
+                                        text = invite.tripName.ifBlank { "Trip invite" },
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "From: ${invite.invitedByEmail}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { onDeclineInvite(invite) },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Decline")
+                                        }
+                                        Button(
+                                            onClick = { onAcceptInvite(invite) },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("Accept")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
             if (trips.isEmpty()) {
                 // Empty State
                 Box(
@@ -166,7 +234,7 @@ fun HomeScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .combinedClickable(
-                                    onClick = { /* Navigate to trip details later */ },
+                                    onClick = { onTripClick(trip) },
                                     onLongClick = {
                                         tripToDelete = trip
                                     }

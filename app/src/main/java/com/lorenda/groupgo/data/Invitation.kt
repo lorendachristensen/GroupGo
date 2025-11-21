@@ -9,6 +9,8 @@ data class Invitation(
     val invitedEmail: String = "",
     val status: String = "pending", // pending, accepted, declined
     val createdAt: Long = System.currentTimeMillis(),
-    val acceptedAt: Long? = null
+    val acceptedAt: Long? = null,
+    val acceptedByUid: String = "",
+    val acceptedByDisplayName: String = ""
 )
 

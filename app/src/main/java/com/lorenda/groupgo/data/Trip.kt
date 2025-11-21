@@ -9,7 +9,9 @@ data class Trip(
     val budget: String = "",
     val numberOfPeople: String = "",
     val createdBy: String = "",
+    val createdByEmail: String = "",
     val createdAt: Long = System.currentTimeMillis(),
-
+    val participants: List<String> = emptyList(),
+    val participantsEmails: List<String> = emptyList()
 )
 

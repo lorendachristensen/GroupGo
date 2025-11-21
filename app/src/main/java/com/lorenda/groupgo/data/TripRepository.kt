@@ -2,7 +2,6 @@ package com.lorenda.groupgo.data
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.channels.awaitClose
@@ -25,7 +24,8 @@ class TripRepository {
 
     ): Result<String> {
         return try {
-            val userId = auth.currentUser?.uid ?: throw Exception("User not logged in")
+            val currentUser = auth.currentUser
+            val userId = currentUser?.uid ?: throw Exception("User not logged in")
 
             val trip = Trip(
                 id = tripsCollection.document().id,
@@ -36,7 +36,10 @@ class TripRepository {
                 budget = budget,
                 numberOfPeople = numberOfPeople,
                 createdBy = userId,
-                createdAt = System.currentTimeMillis()
+                createdByEmail = currentUser?.email ?: "",
+                createdAt = System.currentTimeMillis(),
+                participants = listOf(userId), // creator is a participant
+                participantsEmails = listOf(currentUser?.email ?: "")
             )
 
             tripsCollection.document(trip.id).set(trip).await()
@@ -54,23 +57,46 @@ class TripRepository {
             return@callbackFlow
         }
 
-        val subscription = tripsCollection
+        var createdTrips: List<Trip> = emptyList()
+        var participantTrips: List<Trip> = emptyList()
+
+        fun emitCombined() {
+            val combined = (createdTrips + participantTrips)
+                .distinctBy { it.id }
+                .sortedByDescending { it.createdAt }
+            trySend(combined)
+        }
+
+        val createdSubscription = tripsCollection
             .whereEqualTo("createdBy", userId)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
                     return@addSnapshotListener
                 }
-
-                val trips = snapshot?.documents?.mapNotNull { doc ->
+                createdTrips = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(Trip::class.java)
                 } ?: emptyList()
-
-                trySend(trips)
+                emitCombined()
             }
 
-        awaitClose { subscription.remove() }
+        val participantSubscription = tripsCollection
+            .whereArrayContains("participants", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                participantTrips = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Trip::class.java)
+                } ?: emptyList()
+                emitCombined()
+            }
+
+        awaitClose {
+            createdSubscription.remove()
+            participantSubscription.remove()
+        }
     }
     suspend fun deleteTrip(tripId: String): Result<Unit> {
         return try {
