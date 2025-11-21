@@ -13,6 +13,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.lorenda.groupgo.utils.DatePickerDialog as GroupGoDatePickerDialog
+import com.lorenda.groupgo.ui.common.ScreenDebugLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +75,7 @@ fun CreateTripScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            ScreenDebugLabel("CreateTripScreen.kt")
             // Trip Name
             OutlinedTextField(
                 value = tripName,

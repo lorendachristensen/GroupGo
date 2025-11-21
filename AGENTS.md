@@ -1,7 +1,7 @@
 # CLAUDE.md - GroupGo Project Guide
 
 **Last Updated:** 2025-11-20
-**Version:** 1.0
+**Version:** 1.1
 **Project:** GroupGo - Collaborative Trip Planning Android App
 
 This document provides comprehensive guidance for AI assistants (particularly Claude) working on the GroupGo codebase. It covers architecture, conventions, workflows, and key patterns to follow.
@@ -909,7 +909,14 @@ service cloud.firestore {
 
 | Version | Date       | Changes                                    |
 |---------|------------|--------------------------------------------|
+| 1.1     | 2025-11-20 | Added payment cards flow, profile subscreens, invite/participant updates |
 | 1.0     | 2025-11-20 | Initial CLAUDE.md creation                 |
+
+### 1.1 Notes (2025-11-20)
+- **Stripe payments:** Payment Cards screen calls local backend `http://10.0.2.2:4242/stripe/setup-intent` and lists cards from `/stripe/payment-methods`; supports set default and delete. Publishable key must be provided via `local.properties` → `STRIPE_PUBLISHABLE_KEY`, secrets stay on backend. Network security config allows cleartext to 10.0.2.2.
+- **Profile UX:** Main Profile screen now links to subpages: About Me, Travel Info, Payment Cards; back navigates to Profile. Photo change is stubbed.
+- **Invites/participants:** Trips now store participants with emails; invite accept updates trip and invitations. Trip Details and Edit show participants and invite status. Home shows pending invites.
+- **Date pickers:** Uses Compose DatePicker in UTC to avoid off-by-one.
 
 ---
 

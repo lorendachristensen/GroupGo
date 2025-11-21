@@ -16,8 +16,10 @@ import com.lorenda.groupgo.ui.auth.LoginScreen
 import com.lorenda.groupgo.ui.auth.SignUpScreen
 import com.lorenda.groupgo.ui.theme.GroupGoTheme
 import com.lorenda.groupgo.ui.home.HomeScreen
+import com.lorenda.groupgo.ui.trips.ChooseTripApproachScreen
 import com.lorenda.groupgo.ui.trips.CreateTripScreen
 import com.lorenda.groupgo.ui.trips.EditTripScreen
+import com.lorenda.groupgo.ui.trips.ExploreTripScreen
 import com.lorenda.groupgo.ui.trips.TripDetailsScreen
 import com.lorenda.groupgo.ui.trips.ParticipantDisplay
 import com.lorenda.groupgo.ui.profile.ProfileScreen
@@ -103,6 +105,9 @@ fun GroupGoApp() {
     var showProfile by remember { mutableStateOf(false) }  // ONLY ADDITION: Profile state
     var showEditTrip by remember { mutableStateOf(false) }
     var showTripDetails by remember { mutableStateOf(false) }
+    var showChooseTripApproach by remember { mutableStateOf(false) }
+    var showExploreTrip by remember { mutableStateOf(false) }
+    var exploreIsSubmitting by remember { mutableStateOf(false) }
     var showAboutMe by remember { mutableStateOf(false) }
     var showTravelInfo by remember { mutableStateOf(false) }
     var showPaymentCards by remember { mutableStateOf(false) }
@@ -317,10 +322,26 @@ fun GroupGoApp() {
                     }
                 )
             }
+            showChooseTripApproach && isLoggedIn -> {
+                ChooseTripApproachScreen(
+                    onBackClick = {
+                        showChooseTripApproach = false
+                    },
+                    onPlanSpecificClick = {
+                        showChooseTripApproach = false
+                        showCreateTrip = true
+                    },
+                    onExploreClick = {
+                        showChooseTripApproach = false
+                        showExploreTrip = true
+                    }
+                )
+            }
             showCreateTrip && isLoggedIn -> {
                 CreateTripScreen(
                     onBackClick = {
                         showCreateTrip = false
+                        showChooseTripApproach = false
                     },
 
                     onCreateClick = { name, destination, budget, people, inviteEmail ->
@@ -362,6 +383,7 @@ fun GroupGoApp() {
                                     Toast.LENGTH_LONG
                                 ).show()
                                 showCreateTrip = false
+                                showChooseTripApproach = false
                             } else {
                                 Toast.makeText(
                                     context,
@@ -371,6 +393,70 @@ fun GroupGoApp() {
                             }
                         }
                     }
+                )
+            }
+            showExploreTrip && isLoggedIn -> {
+                ExploreTripScreen(
+                    onBackClick = {
+                        showExploreTrip = false
+                        showChooseTripApproach = true
+                    },
+                    onCreateClick = { name, invitees ->
+                        if (exploreIsSubmitting) return@ExploreTripScreen
+                        exploreIsSubmitting = true
+                        scope.launch {
+                            try {
+                                val createResult = tripRepository.createExploratoryTrip(name)
+                                val tripId = createResult.getOrNull()
+                                val success = createResult.isSuccess && tripId != null
+                                if (success && tripId != null) {
+                                    val failedInvite = if (invitees.isNotEmpty()) {
+                                        invitees.firstNotNullOfOrNull { email ->
+                                            val inviteResult = invitationRepository.sendInvitation(
+                                                tripId = tripId,
+                                                tripName = name,
+                                                invitedEmail = email
+                                            )
+                                            if (inviteResult.isFailure) inviteResult else null
+                                        }
+                                    } else {
+                                        null
+                                    }
+
+                                    failedInvite?.let { failure ->
+                                        Toast.makeText(
+                                            context,
+                                            "Trip created, but some invites failed: ${failure.exceptionOrNull()?.message}",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    } ?: Toast.makeText(
+                                        context,
+                                        if (invitees.isEmpty()) "Exploratory trip '$name' created" else "Trip and invites sent",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+
+                                    showExploreTrip = false
+                                    showChooseTripApproach = false
+                                    return@launch
+                                }
+
+                                Toast.makeText(
+                                    context,
+                                    "Error creating trip: ${createResult.exceptionOrNull()?.message ?: "Unknown error"}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(
+                                    context,
+                                    "Error creating trip: ${e.message ?: "Unknown error"}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } finally {
+                                exploreIsSubmitting = false
+                            }
+                        }
+                    },
+                    isSubmitting = exploreIsSubmitting
                 )
             }
             showEditTrip && isLoggedIn && tripToEdit != null -> {
@@ -471,7 +557,7 @@ fun GroupGoApp() {
                     userEmail = authViewModel.auth.currentUser?.email ?: "User",
                     trips = trips,  // Pass the trips list
                     onCreateTripClick = {
-                        showCreateTrip = true
+                        showChooseTripApproach = true
                     },
                     onProfileClick = {  // ONLY ADDITION: Profile click handler
                         showProfile = true

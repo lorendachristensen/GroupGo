@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lorenda.groupgo.data.Trip
 import com.lorenda.groupgo.data.Invitation
+import com.lorenda.groupgo.ui.common.ScreenDebugLabel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -79,6 +80,7 @@ fun HomeScreen(
                 .padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            ScreenDebugLabel("HomeScreen.kt", modifier = Modifier.align(Alignment.Start))
             // Welcome Section
             Card(
                 modifier = Modifier

@@ -117,12 +117,25 @@ class InvitationRepository {
                 // Add user UID/email to trip participants (create field if not exists)
                 val currentParticipants = tripSnapshot.get("participants") as? List<String> ?: emptyList()
                 val currentParticipantEmails = tripSnapshot.get("participantsEmails") as? List<String> ?: emptyList()
-                if (!currentParticipants.contains(currentUser.uid)) {
-                    transaction.update(tripRef, mapOf(
-                        "participants" to (currentParticipants + currentUser.uid),
-                        "participantsEmails" to (currentParticipantEmails + resolvedEmail)
-                    ))
+                val updatedParticipants = if (currentUser.uid in currentParticipants) {
+                    currentParticipants
+                } else {
+                    currentParticipants + currentUser.uid
                 }
+                val updatedParticipantEmails = if (resolvedEmail in currentParticipantEmails) {
+                    currentParticipantEmails
+                } else {
+                    currentParticipantEmails + resolvedEmail
+                }
+
+                transaction.update(
+                    tripRef,
+                    mapOf(
+                        "participants" to updatedParticipants,
+                        "participantsEmails" to updatedParticipantEmails,
+                        "numberOfPeople" to updatedParticipants.size.toString()
+                    )
+                )
             }.await()
 
             Result.success(Unit)

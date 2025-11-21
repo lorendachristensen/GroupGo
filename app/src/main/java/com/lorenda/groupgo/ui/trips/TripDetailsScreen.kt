@@ -15,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.lorenda.groupgo.data.Invitation
 import com.lorenda.groupgo.data.Trip
+import com.lorenda.groupgo.ui.common.ScreenDebugLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +52,9 @@ fun TripDetailsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item {
+                ScreenDebugLabel("TripDetailsScreen.kt")
+            }
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),

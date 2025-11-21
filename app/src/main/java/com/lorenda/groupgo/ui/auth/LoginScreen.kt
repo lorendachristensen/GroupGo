@@ -11,6 +11,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.lorenda.groupgo.ui.common.ScreenDebugLabel
 
 @Composable
 fun LoginScreen(
@@ -29,6 +30,7 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        ScreenDebugLabel("LoginScreen.kt", modifier = Modifier.fillMaxWidth())
         // App Title
         Text(
             text = "GroupGo",

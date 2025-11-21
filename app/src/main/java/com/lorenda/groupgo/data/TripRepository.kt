@@ -21,7 +21,6 @@ class TripRepository {
         endDate: String,
         budget: String,
         numberOfPeople: String,
-
     ): Result<String> {
         return try {
             val currentUser = auth.currentUser
@@ -39,6 +38,35 @@ class TripRepository {
                 createdByEmail = currentUser?.email ?: "",
                 createdAt = System.currentTimeMillis(),
                 participants = listOf(userId), // creator is a participant
+                participantsEmails = listOf(currentUser?.email ?: "")
+            )
+
+            tripsCollection.document(trip.id).set(trip).await()
+            Result.success(trip.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun createExploratoryTrip(
+        name: String
+    ): Result<String> {
+        return try {
+            val currentUser = auth.currentUser
+            val userId = currentUser?.uid ?: throw Exception("User not logged in")
+
+            val trip = Trip(
+                id = tripsCollection.document().id,
+                name = name,
+                destination = "",
+                startDate = "TBD",
+                endDate = "TBD",
+                budget = "",
+                numberOfPeople = "1",
+                createdBy = userId,
+                createdByEmail = currentUser?.email ?: "",
+                createdAt = System.currentTimeMillis(),
+                participants = listOf(userId),
                 participantsEmails = listOf(currentUser?.email ?: "")
             )
 

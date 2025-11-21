@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseUser
 import com.lorenda.groupgo.data.UserProfile
+import com.lorenda.groupgo.ui.common.ScreenDebugLabel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -68,6 +69,7 @@ fun ProfileScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            ScreenDebugLabel("ProfileScreen.kt", modifier = Modifier.fillMaxWidth())
             // Profile Avatar
             Box(contentAlignment = Alignment.BottomEnd) {
                 Card(

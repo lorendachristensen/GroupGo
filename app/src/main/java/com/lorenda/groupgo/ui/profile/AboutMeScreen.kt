@@ -10,6 +10,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.lorenda.groupgo.data.UserProfile
+import com.lorenda.groupgo.ui.common.ScreenDebugLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +50,7 @@ fun AboutMeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            ScreenDebugLabel("AboutMeScreen.kt")
             Text("Display Name", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             OutlinedTextField(
                 value = displayName,

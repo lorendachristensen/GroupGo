@@ -17,6 +17,7 @@ import com.lorenda.groupgo.data.Invitation
 import com.lorenda.groupgo.data.Trip
 import com.lorenda.groupgo.utils.DatePickerDialog as GroupGoDatePickerDialog
 import com.lorenda.groupgo.ui.trips.ParticipantDisplay
+import com.lorenda.groupgo.ui.common.ScreenDebugLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,6 +106,7 @@ fun EditTripScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            ScreenDebugLabel("EditTripScreen.kt")
             OutlinedTextField(
                 value = tripName,
                 onValueChange = { tripName = it },

@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.lorenda.groupgo.ui.common.ScreenDebugLabel
 import com.stripe.android.PaymentConfiguration
 import com.stripe.android.paymentsheet.PaymentSheet
 import com.stripe.android.paymentsheet.PaymentSheetResult
@@ -103,6 +104,7 @@ fun PaymentCardsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            ScreenDebugLabel("PaymentCardsScreen.kt")
             Text(
                 text = "Link a card to your account",
                 style = MaterialTheme.typography.titleMedium,
