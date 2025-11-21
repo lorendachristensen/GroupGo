@@ -17,8 +17,10 @@ import com.lorenda.groupgo.ui.auth.SignUpScreen
 import com.lorenda.groupgo.ui.theme.GroupGoTheme
 import com.lorenda.groupgo.ui.home.HomeScreen
 import com.lorenda.groupgo.ui.trips.CreateTripScreen
+import com.lorenda.groupgo.ui.trips.EditTripScreen
 import com.lorenda.groupgo.ui.profile.ProfileScreen
 import com.lorenda.groupgo.data.TripRepository
+import com.lorenda.groupgo.data.Trip
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -48,6 +50,8 @@ fun GroupGoApp() {
     var showSignUp by remember { mutableStateOf(false) }
     var showCreateTrip by remember { mutableStateOf(false) }
     var showProfile by remember { mutableStateOf(false) }  // ONLY ADDITION: Profile state
+    var showEditTrip by remember { mutableStateOf(false) }
+    var tripToEdit by remember { mutableStateOf<Trip?>(null) }
 
     // Coroutine scope for async operations
     val scope = rememberCoroutineScope()
@@ -126,6 +130,44 @@ fun GroupGoApp() {
                     }
                 )
             }
+            showEditTrip && isLoggedIn && tripToEdit != null -> {
+                val trip = tripToEdit!!
+                EditTripScreen(
+                    trip = trip,
+                    onBackClick = {
+                        showEditTrip = false
+                        tripToEdit = null
+                    },
+                    onSaveClick = { name, destination, budget, people, startDate, endDate ->
+                        scope.launch {
+                            val result = tripRepository.updateTrip(
+                                tripId = trip.id,
+                                name = name,
+                                destination = destination,
+                                budget = budget,
+                                numberOfPeople = people,
+                                startDate = startDate,
+                                endDate = endDate
+                            )
+                            if (result.isSuccess) {
+                                Toast.makeText(
+                                    context,
+                                    "Trip updated successfully",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                showEditTrip = false
+                                tripToEdit = null
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error updating trip: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                )
+            }
 
             isLoggedIn -> {
                 HomeScreen(
@@ -158,6 +200,10 @@ fun GroupGoApp() {
                                 ).show()
                             }
                         }
+                    },
+                    onEditTrip = { trip ->
+                        tripToEdit = trip
+                        showEditTrip = true
                     }
                 )
             }

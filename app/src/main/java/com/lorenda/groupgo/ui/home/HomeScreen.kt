@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -27,7 +28,8 @@ fun HomeScreen(
     onCreateTripClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},  // NEW PARAMETER ADDED
     onLogoutClick: () -> Unit = {},
-    onDeleteTrip: (String) -> Unit = {}  // ADDED TO MATCH YOUR EXISTING IMPLEMENTATION
+    onDeleteTrip: (String) -> Unit = {},  // ADDED TO MATCH YOUR EXISTING IMPLEMENTATION
+    onEditTrip: (Trip) -> Unit = {}
 ) {
     var tripToDelete by remember { mutableStateOf<Trip?>(null) }
 
@@ -173,11 +175,23 @@ fun HomeScreen(
                             Column(
                                 modifier = Modifier.padding(16.dp)
                             ) {
-                                Text(
-                                    text = trip.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = trip.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    IconButton(onClick = { onEditTrip(trip) }) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = "Edit trip"
+                                        )
+                                    }
+                                }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "📍 ${trip.destination}",

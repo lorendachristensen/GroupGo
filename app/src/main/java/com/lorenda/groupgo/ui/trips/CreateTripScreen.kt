@@ -12,8 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.text.SimpleDateFormat
-import java.util.*
+import com.lorenda.groupgo.utils.DatePickerDialog as GroupGoDatePickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +28,26 @@ fun CreateTripScreen(
     // For date pickers - simplified for now
     var startDate by remember { mutableStateOf("Select date") }
     var endDate by remember { mutableStateOf("Select date") }
+    var showStartDatePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+
+    if (showStartDatePicker) {
+        GroupGoDatePickerDialog(
+            onDateSelected = { date ->
+                startDate = date
+            },
+            onDismiss = { showStartDatePicker = false }
+        )
+    }
+
+    if (showEndDatePicker) {
+        GroupGoDatePickerDialog(
+            onDateSelected = { date ->
+                endDate = date
+            },
+            onDismiss = { showEndDatePicker = false }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -82,9 +101,7 @@ fun CreateTripScreen(
                 // Start Date
                 OutlinedCard(
                     onClick = {
-                        // For now, just set a sample date
-                        startDate = SimpleDateFormat("MMM dd, yyyy", Locale.US)
-                            .format(Date())
+                        showStartDatePicker = true
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -116,11 +133,7 @@ fun CreateTripScreen(
                 // End Date
                 OutlinedCard(
                     onClick = {
-                        // For now, just set a sample date
-                        val calendar = Calendar.getInstance()
-                        calendar.add(Calendar.DAY_OF_MONTH, 7)
-                        endDate = SimpleDateFormat("MMM dd, yyyy", Locale.US)
-                            .format(calendar.time)
+                        showEndDatePicker = true
                     },
                     modifier = Modifier.weight(1f)
                 ) {
