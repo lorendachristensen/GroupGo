@@ -14,6 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseUser
+import com.lorenda.groupgo.data.UserProfile
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -23,10 +24,19 @@ fun ProfileScreen(
     user: FirebaseUser?,
     onBackClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
-    onUpdateProfile: (String) -> Unit = {},
+    profile: UserProfile? = null,
+    onUpdateProfile: (UserProfile) -> Unit = {},
     isLoading: Boolean = false
 ) {
-    var displayName by remember { mutableStateOf(user?.displayName ?: "") }
+    val resolvedProfile = profile ?: UserProfile(uid = user?.uid ?: "")
+
+    var firstName by remember(profile) { mutableStateOf(resolvedProfile.firstName) }
+    var lastName by remember(profile) { mutableStateOf(resolvedProfile.lastName) }
+    var displayName by remember(profile) { mutableStateOf(resolvedProfile.displayName) }
+    var profilePic by remember(profile) { mutableStateOf(resolvedProfile.profilePic) }
+    var shortBio by remember(profile) { mutableStateOf(resolvedProfile.shortBio) }
+    var homeAirport by remember(profile) { mutableStateOf(resolvedProfile.homeAirport) }
+    var passportId by remember(profile) { mutableStateOf(resolvedProfile.passportId) }
     var isEditing by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
 
@@ -43,6 +53,27 @@ fun ProfileScreen(
                     if (!isEditing) {
                         IconButton(onClick = { isEditing = true }) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit Profile")
+                        }
+                    }
+                    if (isEditing) {
+                        TextButton(
+                            onClick = {
+                                onUpdateProfile(
+                                    resolvedProfile.copy(
+                                        firstName = firstName,
+                                        lastName = lastName,
+                                        displayName = displayName.ifBlank { "$firstName $lastName".trim() },
+                                        profilePic = profilePic,
+                                        shortBio = shortBio,
+                                        homeAirport = homeAirport,
+                                        passportId = passportId
+                                    )
+                                )
+                                isEditing = false
+                            },
+                            enabled = !isLoading && firstName.isNotBlank() && lastName.isNotBlank()
+                        ) {
+                            Text("Save")
                         }
                     }
                 },
@@ -89,10 +120,77 @@ fun ProfileScreen(
             // Display Name Section
             if (isEditing) {
                 OutlinedTextField(
+                    value = firstName,
+                    onValueChange = { firstName = it },
+                    label = { Text("First Name *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isLoading
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = lastName,
+                    onValueChange = { lastName = it },
+                    label = { Text("Last Name *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isLoading
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
                     value = displayName,
                     onValueChange = { displayName = it },
                     label = { Text("Display Name") },
                     placeholder = { Text("Enter your name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isLoading
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = profilePic,
+                    onValueChange = { profilePic = it },
+                    label = { Text("Profile Picture URL") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isLoading
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = shortBio,
+                    onValueChange = { shortBio = it },
+                    label = { Text("Short Bio") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 80.dp),
+                    enabled = !isLoading
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = homeAirport,
+                    onValueChange = { homeAirport = it },
+                    label = { Text("Home Airport") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isLoading
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = passportId,
+                    onValueChange = { passportId = it },
+                    label = { Text("Passport ID") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !isLoading
@@ -106,7 +204,13 @@ fun ProfileScreen(
                 ) {
                     OutlinedButton(
                         onClick = {
-                            displayName = user?.displayName ?: ""
+                            firstName = resolvedProfile.firstName
+                            lastName = resolvedProfile.lastName
+                            displayName = resolvedProfile.displayName
+                            profilePic = resolvedProfile.profilePic
+                            shortBio = resolvedProfile.shortBio
+                            homeAirport = resolvedProfile.homeAirport
+                            passportId = resolvedProfile.passportId
                             isEditing = false
                         },
                         modifier = Modifier.weight(1f),
@@ -117,11 +221,21 @@ fun ProfileScreen(
 
                     Button(
                         onClick = {
-                            onUpdateProfile(displayName)
+                            onUpdateProfile(
+                                resolvedProfile.copy(
+                                    firstName = firstName,
+                                    lastName = lastName,
+                                    displayName = displayName.ifBlank { "$firstName $lastName".trim() },
+                                    profilePic = profilePic,
+                                    shortBio = shortBio,
+                                    homeAirport = homeAirport,
+                                    passportId = passportId
+                                )
+                            )
                             isEditing = false
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = !isLoading && displayName.isNotBlank()
+                        enabled = !isLoading && firstName.isNotBlank() && lastName.isNotBlank()
                     ) {
                         if (isLoading) {
                             CircularProgressIndicator(
@@ -135,7 +249,7 @@ fun ProfileScreen(
                 }
             } else {
                 Text(
-                    text = displayName.ifEmpty { "No name set" },
+                    text = displayName.ifEmpty { resolvedProfile.displayName.ifEmpty { "No name set" } },
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -191,6 +305,16 @@ fun ProfileScreen(
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ProfileRow(label = "First Name", value = resolvedProfile.firstName.ifBlank { "Not set" })
+                    ProfileRow(label = "Last Name", value = resolvedProfile.lastName.ifBlank { "Not set" })
+                    ProfileRow(label = "Display Name", value = resolvedProfile.displayName.ifBlank { "Not set" })
+                    ProfileRow(label = "Profile Picture", value = resolvedProfile.profilePic.ifBlank { "Not set" })
+                    ProfileRow(label = "Short Bio", value = resolvedProfile.shortBio.ifBlank { "Not set" })
+                    ProfileRow(label = "Home Airport", value = resolvedProfile.homeAirport.ifBlank { "Not set" })
+                    ProfileRow(label = "Passport ID", value = resolvedProfile.passportId.ifBlank { "Not set" })
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -274,7 +398,25 @@ fun ProfileScreen(
 @Composable
 fun ProfileScreenPreview() {
     MaterialTheme {
-        ProfileScreen(user = null)
+        ProfileScreen(user = null, profile = UserProfile(firstName = "Ava", lastName = "Chen"))
+    }
+}
+
+@Composable
+private fun ProfileRow(label: String, value: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
 

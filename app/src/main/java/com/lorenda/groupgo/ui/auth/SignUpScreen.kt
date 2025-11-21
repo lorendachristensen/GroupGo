@@ -15,10 +15,27 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SignUpScreen(
     modifier: Modifier = Modifier,
-    onSignUpClick: (String, String) -> Unit = { _, _ -> },
+    onSignUpClick: (
+        String, // email
+        String, // password
+        String, // firstName
+        String, // lastName
+        String, // displayName
+        String, // profilePic
+        String, // shortBio
+        String, // homeAirport
+        String  // passportId
+    ) -> Unit = { _, _, _, _, _, _, _, _, _ -> },
     onLoginClick: () -> Unit = {},
     isLoading: Boolean = false
 ) {
+    var firstName by remember { mutableStateOf("") }
+    var lastName by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
+    var profilePic by remember { mutableStateOf("") }
+    var shortBio by remember { mutableStateOf("") }
+    var homeAirport by remember { mutableStateOf("") }
+    var passportId by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -47,6 +64,42 @@ fun SignUpScreen(
         )
 
         Spacer(modifier = Modifier.height(32.dp))
+
+        // First Name (required)
+        OutlinedTextField(
+            value = firstName,
+            onValueChange = { firstName = it },
+            label = { Text("First Name *") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Last Name (required)
+        OutlinedTextField(
+            value = lastName,
+            onValueChange = { lastName = it },
+            label = { Text("Last Name *") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Display Name (optional)
+        OutlinedTextField(
+            value = displayName,
+            onValueChange = { displayName = it },
+            label = { Text("Display Name") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Email Field
         OutlinedTextField(
@@ -102,15 +155,76 @@ fun SignUpScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Profile Pic URL (optional)
+        OutlinedTextField(
+            value = profilePic,
+            onValueChange = { profilePic = it },
+            label = { Text("Profile Picture URL") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Short Bio (optional)
+        OutlinedTextField(
+            value = shortBio,
+            onValueChange = { shortBio = it },
+            label = { Text("Short Bio") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 80.dp),
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Home Airport (optional)
+        OutlinedTextField(
+            value = homeAirport,
+            onValueChange = { homeAirport = it },
+            label = { Text("Home Airport") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Passport ID (optional)
+        OutlinedTextField(
+            value = passportId,
+            onValueChange = { passportId = it },
+            label = { Text("Passport ID") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !isLoading
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         // Sign Up Button
         Button(
             onClick = {
                 if (password == confirmPassword) {
-                    onSignUpClick(email, password)
+                    onSignUpClick(
+                        email,
+                        password,
+                        firstName,
+                        lastName,
+                        displayName,
+                        profilePic,
+                        shortBio,
+                        homeAirport,
+                        passportId
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = email.isNotBlank() &&
+            enabled = firstName.isNotBlank() &&
+                    lastName.isNotBlank() &&
+                    email.isNotBlank() &&
                     password.length >= 6 &&
                     password == confirmPassword &&
                     !isLoading

@@ -13,6 +13,7 @@ import kotlinx.coroutines.tasks.await
 
 class AuthViewModel : ViewModel() {
     val auth: FirebaseAuth = Firebase.auth
+    private val profileRepository = com.lorenda.groupgo.data.ProfileRepository()
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
@@ -38,11 +39,43 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    fun signUp(email: String, password: String) {
+    fun signUp(
+        email: String,
+        password: String,
+        firstName: String,
+        lastName: String,
+        displayName: String,
+        profilePic: String,
+        shortBio: String,
+        homeAirport: String,
+        passportId: String
+    ) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
                 auth.createUserWithEmailAndPassword(email, password).await()
+                val user = auth.currentUser
+                if (user != null) {
+                    val profileUpdates = userProfileChangeRequest {
+                        this.displayName = displayName.ifBlank { "$firstName $lastName".trim() }
+                        if (profilePic.isNotBlank()) {
+                            photoUri = android.net.Uri.parse(profilePic)
+                        }
+                    }
+                    user.updateProfile(profileUpdates).await()
+
+                    val profile = com.lorenda.groupgo.data.UserProfile(
+                        uid = user.uid,
+                        firstName = firstName,
+                        lastName = lastName,
+                        displayName = displayName.ifBlank { "$firstName $lastName".trim() },
+                        profilePic = profilePic,
+                        shortBio = shortBio,
+                        homeAirport = homeAirport,
+                        passportId = passportId
+                    )
+                    profileRepository.upsertProfile(profile).getOrThrow()
+                }
                 _authState.value = AuthState.Success("Account created successfully!")
                 _isLoggedIn.value = true
             } catch (e: Exception) {

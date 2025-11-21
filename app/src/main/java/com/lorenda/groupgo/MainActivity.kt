@@ -21,6 +21,8 @@ import com.lorenda.groupgo.ui.trips.EditTripScreen
 import com.lorenda.groupgo.ui.profile.ProfileScreen
 import com.lorenda.groupgo.data.TripRepository
 import com.lorenda.groupgo.data.Trip
+import com.lorenda.groupgo.data.ProfileRepository
+import com.lorenda.groupgo.data.UserProfile
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -45,6 +47,9 @@ fun GroupGoApp() {
     // Trip repository and trips list
     val tripRepository = remember { TripRepository() }
     val trips by tripRepository.getUserTrips().collectAsState(initial = emptyList())
+    val profileRepository = remember { ProfileRepository() }
+    var userProfile by remember { mutableStateOf<UserProfile?>(null) }
+    var isProfileLoading by remember { mutableStateOf(false) }
 
     // Track which screen to show
     var showSignUp by remember { mutableStateOf(false) }
@@ -75,6 +80,20 @@ fun GroupGoApp() {
         }
     }
 
+    LaunchedEffect(showProfile, isLoggedIn) {
+        if (showProfile && isLoggedIn) {
+            val uid = authViewModel.auth.currentUser?.uid
+            if (uid != null) {
+                isProfileLoading = true
+                val result = profileRepository.getProfile(uid)
+                userProfile = result.getOrNull() ?: UserProfile(uid = uid)
+                isProfileLoading = false
+            }
+        } else {
+            userProfile = null
+        }
+    }
+
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         when {
             // ONLY ADDITION: Profile screen case
@@ -89,10 +108,31 @@ fun GroupGoApp() {
                         showProfile = false
                         Toast.makeText(context, "Logged out", Toast.LENGTH_SHORT).show()
                     },
-                    onUpdateProfile = { displayName ->
-                        authViewModel.updateProfile(displayName)
+                    profile = userProfile,
+                    onUpdateProfile = { updatedProfile ->
+                        scope.launch {
+                            val uid = authViewModel.auth.currentUser?.uid
+                            if (uid != null) {
+                                isProfileLoading = true
+                                val resolvedProfile = updatedProfile.copy(uid = uid)
+                                val result = profileRepository.upsertProfile(resolvedProfile)
+                                if (result.isSuccess) {
+                                    userProfile = resolvedProfile
+                                    // Keep Firebase display name in sync for other flows
+                                    authViewModel.updateProfile(resolvedProfile.displayName)
+                                    Toast.makeText(context, "Profile updated", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Error updating profile: ${result.exceptionOrNull()?.message}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                                isProfileLoading = false
+                            }
+                        }
                     },
-                    isLoading = authState is AuthState.Loading
+                    isLoading = isProfileLoading || authState is AuthState.Loading
                 )
             }
             showCreateTrip && isLoggedIn -> {
@@ -210,8 +250,18 @@ fun GroupGoApp() {
             showSignUp -> {
                 SignUpScreen(
                     modifier = Modifier.padding(innerPadding),
-                    onSignUpClick = { email, password ->
-                        authViewModel.signUp(email, password)
+                    onSignUpClick = { email, password, firstName, lastName, displayName, profilePic, shortBio, homeAirport, passportId ->
+                        authViewModel.signUp(
+                            email = email,
+                            password = password,
+                            firstName = firstName,
+                            lastName = lastName,
+                            displayName = displayName,
+                            profilePic = profilePic,
+                            shortBio = shortBio,
+                            homeAirport = homeAirport,
+                            passportId = passportId
+                        )
                     },
                     onLoginClick = {
                         showSignUp = false
