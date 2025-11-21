@@ -27,6 +27,8 @@ import com.lorenda.groupgo.data.ProfileRepository
 import com.lorenda.groupgo.data.UserProfile
 import com.lorenda.groupgo.data.InvitationRepository
 import com.lorenda.groupgo.data.Invitation
+import com.lorenda.groupgo.ui.profile.AboutMeScreen
+import com.lorenda.groupgo.ui.profile.TravelInfoScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.collectLatest
@@ -100,6 +102,8 @@ fun GroupGoApp() {
     var showProfile by remember { mutableStateOf(false) }  // ONLY ADDITION: Profile state
     var showEditTrip by remember { mutableStateOf(false) }
     var showTripDetails by remember { mutableStateOf(false) }
+    var showAboutMe by remember { mutableStateOf(false) }
+    var showTravelInfo by remember { mutableStateOf(false) }
     var tripToEdit by remember { mutableStateOf<Trip?>(null) }
     var tripDetails by remember { mutableStateOf<Trip?>(null) }
 
@@ -212,7 +216,63 @@ fun GroupGoApp() {
                             }
                         }
                     },
+                    onNavigateAbout = {
+                        showAboutMe = true
+                    },
+                    onNavigateTravel = {
+                        showTravelInfo = true
+                    },
+                    onChangePhoto = {
+                        Toast.makeText(context, "Photo upload coming soon", Toast.LENGTH_SHORT).show()
+                    },
                     isLoading = isProfileLoading || authState is AuthState.Loading
+                )
+            }
+            showAboutMe && isLoggedIn -> {
+                val profile = userProfile ?: UserProfile(uid = authViewModel.auth.currentUser?.uid ?: "")
+                AboutMeScreen(
+                    profile = profile,
+                    onBackClick = { showAboutMe = false },
+                    onSave = { updated ->
+                        scope.launch {
+                            val result = profileRepository.upsertProfile(updated)
+                            if (result.isSuccess) {
+                                userProfile = updated
+                                authViewModel.updateProfile(updated.displayName)
+                                Toast.makeText(context, "About updated", Toast.LENGTH_SHORT).show()
+                                showAboutMe = false
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error updating about: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
+                )
+            }
+            showTravelInfo && isLoggedIn -> {
+                val profile = userProfile ?: UserProfile(uid = authViewModel.auth.currentUser?.uid ?: "")
+                TravelInfoScreen(
+                    profile = profile,
+                    onBackClick = { showTravelInfo = false },
+                    onSave = { updated ->
+                        scope.launch {
+                            val result = profileRepository.upsertProfile(updated)
+                            if (result.isSuccess) {
+                                userProfile = updated
+                                Toast.makeText(context, "Travel info updated", Toast.LENGTH_SHORT).show()
+                                showTravelInfo = false
+                            } else {
+                                Toast.makeText(
+                                    context,
+                                    "Error updating travel info: ${result.exceptionOrNull()?.message}",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    }
                 )
             }
             showTripDetails && isLoggedIn && tripDetails != null -> {
