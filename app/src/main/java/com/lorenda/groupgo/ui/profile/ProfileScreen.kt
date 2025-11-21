@@ -29,6 +29,7 @@ fun ProfileScreen(
     onUpdateProfile: (UserProfile) -> Unit = {},
     onNavigateAbout: () -> Unit = {},
     onNavigateTravel: () -> Unit = {},
+    onNavigatePayments: () -> Unit = {},
     onChangePhoto: () -> Unit = {},
     isLoading: Boolean = false
 ) {
@@ -190,6 +191,17 @@ fun ProfileScreen(
                     .padding(horizontal = 8.dp)
             ) {
                 Text("Travel Info")
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = onNavigatePayments,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+            ) {
+                Text("Payment Cards")
             }
 
             Spacer(modifier = Modifier.height(32.dp))

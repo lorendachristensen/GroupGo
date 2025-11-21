@@ -19,6 +19,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "STRIPE_PUBLISHABLE_KEY", "\"${project.findProperty("STRIPE_PUBLISHABLE_KEY") ?: ""}\"")
     }
 
     buildTypes {
@@ -39,6 +40,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -79,4 +81,8 @@ dependencies {
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Stripe Payments
+    implementation("com.stripe:stripe-android:20.49.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }

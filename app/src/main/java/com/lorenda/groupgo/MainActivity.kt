@@ -29,6 +29,7 @@ import com.lorenda.groupgo.data.InvitationRepository
 import com.lorenda.groupgo.data.Invitation
 import com.lorenda.groupgo.ui.profile.AboutMeScreen
 import com.lorenda.groupgo.ui.profile.TravelInfoScreen
+import com.lorenda.groupgo.ui.profile.PaymentCardsScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.collectLatest
@@ -104,6 +105,7 @@ fun GroupGoApp() {
     var showTripDetails by remember { mutableStateOf(false) }
     var showAboutMe by remember { mutableStateOf(false) }
     var showTravelInfo by remember { mutableStateOf(false) }
+    var showPaymentCards by remember { mutableStateOf(false) }
     var tripToEdit by remember { mutableStateOf<Trip?>(null) }
     var tripDetails by remember { mutableStateOf<Trip?>(null) }
 
@@ -217,10 +219,16 @@ fun GroupGoApp() {
                         }
                     },
                     onNavigateAbout = {
+                        showProfile = false
                         showAboutMe = true
                     },
                     onNavigateTravel = {
+                        showProfile = false
                         showTravelInfo = true
+                    },
+                    onNavigatePayments = {
+                        showProfile = false
+                        showPaymentCards = true
                     },
                     onChangePhoto = {
                         Toast.makeText(context, "Photo upload coming soon", Toast.LENGTH_SHORT).show()
@@ -232,7 +240,10 @@ fun GroupGoApp() {
                 val profile = userProfile ?: UserProfile(uid = authViewModel.auth.currentUser?.uid ?: "")
                 AboutMeScreen(
                     profile = profile,
-                    onBackClick = { showAboutMe = false },
+                    onBackClick = {
+                        showAboutMe = false
+                        showProfile = true
+                    },
                     onSave = { updated ->
                         scope.launch {
                             val result = profileRepository.upsertProfile(updated)
@@ -241,6 +252,7 @@ fun GroupGoApp() {
                                 authViewModel.updateProfile(updated.displayName)
                                 Toast.makeText(context, "About updated", Toast.LENGTH_SHORT).show()
                                 showAboutMe = false
+                                showProfile = true
                             } else {
                                 Toast.makeText(
                                     context,
@@ -256,7 +268,10 @@ fun GroupGoApp() {
                 val profile = userProfile ?: UserProfile(uid = authViewModel.auth.currentUser?.uid ?: "")
                 TravelInfoScreen(
                     profile = profile,
-                    onBackClick = { showTravelInfo = false },
+                    onBackClick = {
+                        showTravelInfo = false
+                        showProfile = true
+                    },
                     onSave = { updated ->
                         scope.launch {
                             val result = profileRepository.upsertProfile(updated)
@@ -264,6 +279,7 @@ fun GroupGoApp() {
                                 userProfile = updated
                                 Toast.makeText(context, "Travel info updated", Toast.LENGTH_SHORT).show()
                                 showTravelInfo = false
+                                showProfile = true
                             } else {
                                 Toast.makeText(
                                     context,
@@ -273,6 +289,16 @@ fun GroupGoApp() {
                             }
                         }
                     }
+                )
+            }
+            showPaymentCards && isLoggedIn -> {
+                PaymentCardsScreen(
+                    onBackClick = {
+                        showPaymentCards = false
+                        showProfile = true
+                    },
+                    uid = authViewModel.auth.currentUser?.uid.orEmpty(),
+                    email = authViewModel.auth.currentUser?.email.orEmpty()
                 )
             }
             showTripDetails && isLoggedIn && tripDetails != null -> {
